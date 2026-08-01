@@ -1,8 +1,15 @@
 <?php
+use Illuminate\Support\Facades\Schedule;
+use App\Models\Task;
+use App\Jobs\NotifyOverdueTask;
+use App\Enums\TaskStatus;
 
-use Illuminate\Foundation\Inspiring;
-use Illuminate\Support\Facades\Artisan;
-
-Artisan::command('inspire', function () {
-    $this->comment(Inspiring::quote());
-})->purpose('Display an inspiring quote');
+Schedule::call(function () {
+    $overdueTasks = Task::with('project.user')
+        ->where('status', '!=', TaskStatus::DONE->value)
+        ->where('due_date', '<', now())
+        ->get();
+    foreach ($overdueTasks as $task) {
+        NotifyOverdueTask::dispatch($task);
+    }
+})->daily();
